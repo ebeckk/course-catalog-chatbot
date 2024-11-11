@@ -112,26 +112,21 @@ func (db *Database) insertRecords(r io.Reader, reset bool) error {
 	var courseDocuments []courseRecord
 
 	for _, row := range records[1:] {
-		if len(row) >= 19 {
-			firstName := row[17]
-			lastName := row[18]
-			fullName := strings.TrimSpace(firstName + " " + lastName)
-			if instructors[fullName] {
-				continue
-			} else {
-				if fullName != " " {
-					instructors[fullName] = true
-				}
-			}
 
-			courseDocuments = append(courseDocuments, courseRecord{
-				document:   strings.Join(row, " "),
-				instructor: fullName,
-			})
+		firstName := row[17]
+		lastName := row[18]
+		fullName := firstName + " " + lastName
 
+		if !instructors[fullName] {
+			instructors[fullName] = true
 			instructorsNames = append(instructorsNames, fullName)
-			//fmt.Printf("appened %s to instructorsNames\n", fullName)
 		}
+
+		courseDocuments = append(courseDocuments, courseRecord{
+			document:   strings.Join(row, " "),
+			instructor: fullName,
+		})
+
 	}
 
 	fmt.Printf("Found %d unique instructors and %d courses\n", len(instructors), len(courseDocuments))
@@ -159,12 +154,16 @@ func (db *Database) Query(question string) ([][]string, error) {
 
 	fmt.Printf("Instructor name extracted: %s\n", instructorName)
 
-	name, err := db.instructorCollection.Query(context.TODO(), []string{instructorName}, 1, nil, nil, nil)
-	if err != nil {
-		return nil, fmt.Errorf("error querying instructors collection: %v", err)
-	}
+	var metadata map[string]interface{}
 
-	metadata := map[string]interface{}{"instructor": name.Documents[0][0]}
+	if instructorName != "none" {
+		name, err := db.instructorCollection.Query(context.TODO(), []string{instructorName}, 1, nil, nil, nil)
+		if err != nil {
+			return nil, fmt.Errorf("error querying instructors collection: %v", err)
+		}
+
+		metadata = map[string]interface{}{"instructor": name.Documents[0][0]}
+	}
 
 	courseQR, err := db.courseCollection.Query(context.TODO(), []string{question}, 5, metadata, nil, nil)
 	if err != nil {
@@ -172,8 +171,8 @@ func (db *Database) Query(question string) ([][]string, error) {
 	}
 
 	if len(courseQR.Documents) == 0 {
-		return nil, fmt.Errorf("empty")
+		return nil, fmt.Errorf("no matching courses found")
 	}
 
-	return courseQR.Documents, err
+	return courseQR.Documents, nil
 }

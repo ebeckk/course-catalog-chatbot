@@ -16,7 +16,7 @@ func (db *Database) getInstructorFromQuestion(question string) (string, error) {
 		Messages: []gopenai.ChatCompletionMessage{
 			{
 				Role:    gopenai.ChatMessageRoleSystem,
-				Content: "extract only the first and last name from the following data, i only want the name as the answer" + question,
+				Content: "Extract only the first and last name from the following text. If no name is present, respond with 'none'. Return only the name or 'none' as the answer." + question,
 			},
 			{
 				Role:    gopenai.ChatMessageRoleUser,

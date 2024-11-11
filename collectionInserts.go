@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 
 	"github.com/amikos-tech/chroma-go/types"
 )
@@ -58,13 +57,11 @@ func (db *Database) insertCourses(ctx context.Context, courses []courseRecord) e
 func (db *Database) insertInstructor(instructorNames []string) error {
 	ctx := context.TODO()
 
-	log.Printf("Starting insertInstructorBatch with %d instructors", len(instructorNames))
-
 	if len(instructorNames) == 0 {
 		return nil
 	}
 
-	rs, err := types.NewRecordSet(
+	irs, err := types.NewRecordSet(
 		types.WithEmbeddingFunction(db.instructorCollection.EmbeddingFunction),
 		types.WithIDGenerator(types.NewUUIDGenerator()),
 	)
@@ -74,18 +71,18 @@ func (db *Database) insertInstructor(instructorNames []string) error {
 	}
 
 	for _, instructor := range instructorNames {
-		rs.WithRecord(types.WithDocument(instructor))
+		irs.WithRecord(types.WithDocument(instructor))
 		fmt.Printf("added instructor: %s\n", instructor)
 	}
 
-	_, err = rs.BuildAndValidate(ctx)
+	_, err = irs.BuildAndValidate(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to build and validate instructors: %v", err)
 	}
 	fmt.Println("finished build and validate")
 
 	fmt.Println("ITS ABOUT TO ADD RECORED")
-	_, err = db.instructorCollection.AddRecords(ctx, rs)
+	_, err = db.instructorCollection.AddRecords(ctx, irs)
 	if err != nil {
 		return fmt.Errorf("error adding instructors: %v", err)
 	}
