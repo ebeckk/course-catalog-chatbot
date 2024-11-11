@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"github.com/amikos-tech/chroma-go/types"
 )
@@ -39,6 +40,7 @@ func (db *Database) insertCourses(ctx context.Context, courses []courseRecord) e
 				types.WithDocument(course.document),
 				types.WithMetadata("instructor", course.instructor),
 			)
+			//fmt.Printf("course: %v, instructor: %v\n", course.document, course.instructor)
 		}
 
 		if _, err := rs.BuildAndValidate(ctx); err != nil {
@@ -53,9 +55,12 @@ func (db *Database) insertCourses(ctx context.Context, courses []courseRecord) e
 	return nil
 }
 
-func (db *Database) insertInstructorBatch(ctx context.Context, instructors map[string]bool) error {
+func (db *Database) insertInstructor(instructorNames []string) error {
+	ctx := context.TODO()
 
-	if len(instructors) == 0 {
+	log.Printf("Starting insertInstructorBatch with %d instructors", len(instructorNames))
+
+	if len(instructorNames) == 0 {
 		return nil
 	}
 
@@ -68,7 +73,7 @@ func (db *Database) insertInstructorBatch(ctx context.Context, instructors map[s
 		return fmt.Errorf("error creating instructor record set")
 	}
 
-	for instructor := range instructors {
+	for _, instructor := range instructorNames {
 		rs.WithRecord(types.WithDocument(instructor))
 		fmt.Printf("added instructor: %s\n", instructor)
 	}
@@ -77,10 +82,15 @@ func (db *Database) insertInstructorBatch(ctx context.Context, instructors map[s
 	if err != nil {
 		return fmt.Errorf("failed to build and validate instructors: %v", err)
 	}
+	fmt.Println("finished build and validate")
 
+	fmt.Println("ITS ABOUT TO ADD RECORED")
 	_, err = db.instructorCollection.AddRecords(ctx, rs)
 	if err != nil {
 		return fmt.Errorf("error adding instructors: %v", err)
 	}
+
+	fmt.Println("DONE WITH ADDING ")
+
 	return nil
 }

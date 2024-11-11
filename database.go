@@ -101,13 +101,14 @@ func (db *Database) insertRecords(r io.Reader, reset bool) error {
 		return err
 	}
 
-	if len(records) <= 1 {
+	if len(records) < 1 {
 		return fmt.Errorf("no records to insert")
 	}
 
 	fmt.Printf("Processing %d records from CSV\n", len(records)-1)
 
 	instructors := make(map[string]bool)
+	instructorsNames := []string{}
 	var courseDocuments []courseRecord
 
 	for _, row := range records[1:] {
@@ -115,14 +116,21 @@ func (db *Database) insertRecords(r io.Reader, reset bool) error {
 			firstName := row[17]
 			lastName := row[18]
 			fullName := strings.TrimSpace(firstName + " " + lastName)
-			if fullName != " " {
-				instructors[fullName] = true
+			if instructors[fullName] {
+				continue
+			} else {
+				if fullName != " " {
+					instructors[fullName] = true
+				}
 			}
 
 			courseDocuments = append(courseDocuments, courseRecord{
 				document:   strings.Join(row, " "),
 				instructor: fullName,
 			})
+
+			instructorsNames = append(instructorsNames, fullName)
+			//fmt.Printf("appened %s to instructorsNames\n", fullName)
 		}
 	}
 
@@ -132,62 +140,40 @@ func (db *Database) insertRecords(r io.Reader, reset bool) error {
 		return fmt.Errorf("failed to insert courses: %v", err)
 	}
 
-	if err := db.insertInstructorBatch(ctx, instructors); err != nil {
+	if err := db.insertInstructor(instructorsNames); err != nil {
 		return fmt.Errorf("failed to insert instructors: %v", err)
 	}
 
 	return nil
 }
 
-func (db *Database) Query(question string) (string, error) {
-	ctx := context.Background()
+func (db *Database) Query(question string) ([][]string, error) {
+
+	fmt.Printf("question is: %s\n", question)
 
 	// Extract potential instructor name from the question
 	instructorName, err := db.getInstructorFromQuestion(question)
 	if err != nil {
-		return "", fmt.Errorf("failed to extract instructor from question: %v", err)
+		return nil, fmt.Errorf("failed to extract instructor from question: %v", err)
 	}
 
-	// If an instructor was mentioned, use it in metadata filter
-	var metadata map[string]interface{}
-	if instructorName != "" && instructorName != "NONE" {
-		// Query instructor collection to find the closest match
-		results, err := db.instructorCollection.Query(
-			ctx,
-			[]string{instructorName},
-			5,
-			nil,
-			nil,
-			nil,
-		)
+	fmt.Printf("Instructor name extracted: %s\n", instructorName)
 
-		if err != nil {
-			return "", fmt.Errorf("error querying instructors: %v", err)
-		}
-
-		if results != nil && len(results.Documents) > 0 && len(results.Documents[0]) > 0 {
-			metadata = map[string]interface{}{
-				"instructor": results.Documents[0][0],
-			}
-		}
-	}
-
-	// Query courses with instructor metadata
-	results, err := db.courseCollection.Query(
-		ctx,
-		[]string{question},
-		5,
-		metadata,
-		nil,
-		nil,
-	)
+	name, err := db.instructorCollection.Query(context.TODO(), []string{instructorName}, 1, nil, nil, nil)
 	if err != nil {
-		return "", fmt.Errorf("error querying courses: %v", err)
+		return nil, fmt.Errorf("error querying instructors collection: %v", err)
 	}
 
-	if results == nil || len(results.Documents) == 0 {
-		return "", fmt.Errorf("no results found")
+	metadata := map[string]interface{}{"instructor": name.Documents[0][0]}
+
+	courseQR, err := db.courseCollection.Query(context.TODO(), []string{question}, 5, metadata, nil, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error querying course collection: %v", err)
 	}
 
-	return strings.Join(results.Documents[0], "\n"), nil
+	if len(courseQR.Documents) == 0 {
+		return nil, fmt.Errorf("empty")
+	}
+
+	return courseQR.Documents, err
 }

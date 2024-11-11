@@ -3,33 +3,36 @@ package main
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	gopenai "github.com/sashabaranov/go-openai"
 )
 
 func (db *Database) getInstructorFromQuestion(question string) (string, error) {
-	prompt := gopenai.ChatCompletionMessage{
-		Role: gopenai.ChatMessageRoleUser,
-		Content: fmt.Sprintf(
-			`Extract the instructor name from this question. If there's no instructor name, return "NONE". Only return the name, nothing else.\nQuestion: %s`,
-			question,
-		),
-	}
+
+	fmt.Printf("question recived: %s\n", question)
 
 	req := gopenai.ChatCompletionRequest{
-		Model:    gopenai.GPT4oMini,
-		Messages: []gopenai.ChatCompletionMessage{prompt},
+		Model: gopenai.GPT4oMini,
+		Messages: []gopenai.ChatCompletionMessage{
+			{
+				Role:    gopenai.ChatMessageRoleSystem,
+				Content: "extract only the first and last name from the following data, i only want the name as the answer" + question,
+			},
+			{
+				Role:    gopenai.ChatMessageRoleUser,
+				Content: question,
+			},
+		},
 	}
 
-	resp, err := db.openaiClient.CreateChatCompletion(context.Background(), req)
+	resp, err := db.openaiClient.CreateChatCompletion(context.TODO(), req)
 	if err != nil {
-		return "", fmt.Errorf("failed to extract instructor name: %v", err)
+		fmt.Println("CreateChatCompletion failed: ", err)
 	}
 
-	if len(resp.Choices) == 0 {
-		return "", fmt.Errorf("no response from OpenAI")
-	}
+	result := resp.Choices[0].Message.Content
 
-	return strings.TrimSpace(resp.Choices[0].Message.Content), nil
+	fmt.Printf("instructor name from api: %s\n", result)
+
+	return result, nil
 }

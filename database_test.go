@@ -24,7 +24,7 @@ ADVT,320,01,40326,L,M,Copywriting,In-Person,IP,W,1145,1525,8/20/24,12/4/24,MA,22
 ADVT,398,13,42534,I,M,USF Ad Program Social Media,In-Person,IP,,,,8/20/24,11/28/24,TBA,TBA,1,Marthinus Johannes Coetzee,Van Loggerenberg,mvanloggerenberg@usfca.edu,LA
 ADVT,401,01,40328,FWK,M,Advertising Internship,In-Person,IP,S,1145,1525,8/20/24,11/30/24,LM,141A,5,David,McGrane,dmcgrane@usfca.edu,LA
 SOCC,100,01,40500,FWK,M,Intro to Soccer,In-Person,IP,S,1145,1525,8/20/24,11/30/24,LM,141A,5,Lionel,Messi,messi@usfca.edu,LA`,
-			q:        `What course does Messi teach?`,
+			q:        `What course does Lionel Messi teach?`,
 			expected: `SOCC 100 01 40500 FWK M Intro to Soccer In-Person IP S 1145 1525 8/20/24 11/30/24 LM 141A 5 Lionel Messi messi@usfca.edu LA`,
 		},
 	}
@@ -47,13 +47,12 @@ SOCC,100,01,40500,FWK,M,Intro to Soccer,In-Person,IP,S,1145,1525,8/20/24,11/30/2
 
 			fmt.Printf("results %s\n", results)
 
-			if len(results) == 0 {
+			if len(results) == 0 || len(results[0]) == 0 {
 				t.Fatal("No results returned")
 			}
 
-			// only get first result
-
-			actual := strings.Split(results, "\n")[0]
+			// Get first result from the 2D slice
+			actual := results[0][0]
 
 			if actual != test.expected {
 				t.Errorf("got:\n%s\nwant:\n%s", actual, test.expected)

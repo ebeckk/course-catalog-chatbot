@@ -7,16 +7,15 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"time"
 
 	"github.com/sashabaranov/go-openai"
 )
 
-func GetAnswer(client *openai.Client, question string, query string) string {
-	if query == "" {
-		fmt.Println("no query data")
-	} else {
-		fmt.Println(query)
+func GetAnswer(client *openai.Client, question string, query [][]string) string {
+
+	var allQuery string
+	for _, row := range query[0] {
+		allQuery = allQuery + row
 	}
 
 	req := openai.ChatCompletionRequest{
@@ -24,7 +23,7 @@ func GetAnswer(client *openai.Client, question string, query string) string {
 		Messages: []openai.ChatCompletionMessage{
 			{
 				Role:    openai.ChatMessageRoleSystem,
-				Content: "use the following data to answer the question and format it nicley, this is the data:" + query,
+				Content: "use the following data to answer the question and format it nicley, this is the data:" + allQuery,
 			},
 			{
 				Role:    openai.ChatMessageRoleUser,
@@ -55,13 +54,12 @@ func main() {
 	if err != nil {
 		fmt.Printf("couldn't create new chromaDB: %v", err)
 	}
-
 	db.insertRecords(file, *reset)
 
 	client := openai.NewClient(os.Getenv("api"))
 
 	scanner := bufio.NewScanner(os.Stdin)
-	time.Sleep(5 * time.Second)
+
 	fmt.Printf("\nCatalog search> ")
 
 	for scanner.Scan() {
