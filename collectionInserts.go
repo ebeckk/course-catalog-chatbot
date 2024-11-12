@@ -12,7 +12,9 @@ type courseRecord struct {
 	instructor string
 }
 
-func (db *Database) insertCourses(ctx context.Context, courses []courseRecord) error {
+func (db *Database) insertCourses(courses []courseRecord) error {
+	ctx := context.Background()
+
 	fmt.Printf("Attempting to insert %d courses\n", len(courses))
 	if len(courses) == 0 {
 		fmt.Println("nothing to insert")

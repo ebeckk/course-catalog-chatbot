@@ -95,7 +95,6 @@ func (db *Database) insertRecords(r io.Reader, reset bool) error {
 		return nil
 	}
 
-	ctx := context.Background()
 	records, err := ReadCSV(r)
 	if err != nil {
 		return err
@@ -131,7 +130,7 @@ func (db *Database) insertRecords(r io.Reader, reset bool) error {
 
 	fmt.Printf("Found %d unique instructors and %d courses\n", len(instructors), len(courseDocuments))
 
-	if err := db.insertCourses(ctx, courseDocuments); err != nil {
+	if err := db.insertCourses(courseDocuments); err != nil {
 		return fmt.Errorf("failed to insert courses: %v", err)
 	}
 
@@ -140,39 +139,4 @@ func (db *Database) insertRecords(r io.Reader, reset bool) error {
 	}
 
 	return nil
-}
-
-func (db *Database) Query(question string) ([][]string, error) {
-
-	fmt.Printf("question is: %s\n", question)
-
-	// Extract potential instructor name from the question
-	instructorName, err := db.getInstructorFromQuestion(question)
-	if err != nil {
-		return nil, fmt.Errorf("failed to extract instructor from question: %v", err)
-	}
-
-	fmt.Printf("Instructor name extracted: %s\n", instructorName)
-
-	var metadata map[string]interface{}
-
-	if instructorName != "none" {
-		name, err := db.instructorCollection.Query(context.TODO(), []string{instructorName}, 1, nil, nil, nil)
-		if err != nil {
-			return nil, fmt.Errorf("error querying instructors collection: %v", err)
-		}
-
-		metadata = map[string]interface{}{"instructor": name.Documents[0][0]}
-	}
-
-	courseQR, err := db.courseCollection.Query(context.TODO(), []string{question}, 5, metadata, nil, nil)
-	if err != nil {
-		return nil, fmt.Errorf("error querying course collection: %v", err)
-	}
-
-	if len(courseQR.Documents) == 0 {
-		return nil, fmt.Errorf("no matching courses found")
-	}
-
-	return courseQR.Documents, nil
 }

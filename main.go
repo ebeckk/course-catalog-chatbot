@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -10,35 +9,6 @@ import (
 
 	"github.com/sashabaranov/go-openai"
 )
-
-func GetAnswer(client *openai.Client, question string, query [][]string) string {
-
-	var allQuery string
-	for _, row := range query[0] {
-		allQuery = allQuery + row
-	}
-
-	req := openai.ChatCompletionRequest{
-		Model: openai.GPT4oMini,
-		Messages: []openai.ChatCompletionMessage{
-			{
-				Role:    openai.ChatMessageRoleSystem,
-				Content: "use the following data to answer the question and format it nicley, this is the data:" + allQuery,
-			},
-			{
-				Role:    openai.ChatMessageRoleUser,
-				Content: question,
-			},
-		},
-	}
-
-	resp, err := client.CreateChatCompletion(context.TODO(), req)
-	if err != nil {
-		fmt.Println("CreateChatCompletion failed: ", err)
-	}
-
-	return resp.Choices[0].Message.Content
-}
 
 func main() {
 	reset := flag.Bool("reset", false, "set true to reset")
@@ -68,7 +38,21 @@ func main() {
 		if err != nil {
 			return
 		}
-		answer := GetAnswer(client, question, result)
+		var allQuery string
+		for _, row := range result[0] {
+			allQuery = allQuery + row
+		}
+
+		bot := &chatBot{
+			question: question,
+			data:     "use the following data to answer the question and format it, this is the data:" + allQuery,
+		}
+
+		answer, err := bot.callAPI(client)
+		if err != nil {
+			fmt.Printf("api call didn't work: %v", err)
+		}
+
 		fmt.Println(answer)
 		fmt.Print("\nCatalog search> ")
 
