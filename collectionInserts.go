@@ -12,6 +12,9 @@ type courseRecord struct {
 	instructor string
 }
 
+/*
+* Function to insert all of the courses (csv-data) into the DB
+ */
 func (db *Database) insertCourses(courses []courseRecord) error {
 	ctx := context.Background()
 
@@ -21,6 +24,7 @@ func (db *Database) insertCourses(courses []courseRecord) error {
 		return nil
 	}
 
+	// use batches with size of 2000
 	const batchSize = 2000
 	for i := 0; i < len(courses); i += batchSize {
 		end := i + batchSize
@@ -39,6 +43,7 @@ func (db *Database) insertCourses(courses []courseRecord) error {
 		for _, course := range courses[i:end] {
 			rs.WithRecord(
 				types.WithDocument(course.document),
+				// use metadata with courseRecord struct
 				types.WithMetadata("instructor", course.instructor),
 			)
 			//fmt.Printf("course: %v, instructor: %v\n", course.document, course.instructor)
@@ -56,6 +61,9 @@ func (db *Database) insertCourses(courses []courseRecord) error {
 	return nil
 }
 
+/*
+* Function to insert instructorNames into DB
+ */
 func (db *Database) insertInstructor(instructorNames []string) error {
 	ctx := context.TODO()
 
@@ -72,6 +80,7 @@ func (db *Database) insertInstructor(instructorNames []string) error {
 		return fmt.Errorf("error creating instructor record set")
 	}
 
+	// range through the slice and add each instructor
 	for _, instructor := range instructorNames {
 		irs.WithRecord(types.WithDocument(instructor))
 		fmt.Printf("added instructor: %s\n", instructor)
@@ -81,15 +90,13 @@ func (db *Database) insertInstructor(instructorNames []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to build and validate instructors: %v", err)
 	}
-	fmt.Println("finished build and validate")
 
-	fmt.Println("ITS ABOUT TO ADD RECORED")
 	_, err = db.instructorCollection.AddRecords(ctx, irs)
 	if err != nil {
 		return fmt.Errorf("error adding instructors: %v", err)
 	}
 
-	fmt.Println("DONE WITH ADDING ")
+	fmt.Println("Finished adding instructors")
 
 	return nil
 }

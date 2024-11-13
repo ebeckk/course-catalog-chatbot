@@ -22,6 +22,11 @@ type Database struct {
 	openaiClient         *gopenai.Client
 }
 
+/*
+* This function creates the ChromaDB. It generates the embedding function.
+* It also resets the collections if reset == true.
+ */
+
 func NewChromaDB(reset bool) (*Database, error) {
 	if err := godotenv.Load("api.env"); err != nil {
 		return nil, fmt.Errorf("error loading .env file: %v", err)
@@ -90,11 +95,17 @@ func NewChromaDB(reset bool) (*Database, error) {
 
 }
 
+/*
+* Function which inserts all of the records from the csv into the database.
+* Reads CSV data uses it to call insertCourses() and insertInstructors() to insert both respectivley.
+ */
+
 func (db *Database) insertRecords(r io.Reader, reset bool) error {
 	if !reset {
 		return nil
 	}
 
+	// read the csv file
 	records, err := ReadCSV(r)
 	if err != nil {
 		return err
@@ -106,21 +117,27 @@ func (db *Database) insertRecords(r io.Reader, reset bool) error {
 
 	fmt.Printf("Processing %d records from CSV\n", len(records)-1)
 
+	// make a map to check for duplicates
 	instructors := make(map[string]bool)
+	// make a slice to append names to
 	instructorsNames := []string{}
+	// holds course info (csv row) and instructorName
 	var courseDocuments []courseRecord
 
 	for _, row := range records[1:] {
 
+		// get the fullName of the instructor
 		firstName := row[17]
 		lastName := row[18]
 		fullName := firstName + " " + lastName
 
+		// check for duplicates, then append
 		if !instructors[fullName] {
 			instructors[fullName] = true
 			instructorsNames = append(instructorsNames, fullName)
 		}
 
+		// append into courseDocuments slice
 		courseDocuments = append(courseDocuments, courseRecord{
 			document:   strings.Join(row, " "),
 			instructor: fullName,
@@ -130,10 +147,12 @@ func (db *Database) insertRecords(r io.Reader, reset bool) error {
 
 	fmt.Printf("Found %d unique instructors and %d courses\n", len(instructors), len(courseDocuments))
 
+	// insert course-info + metadata with instructors
 	if err := db.insertCourses(courseDocuments); err != nil {
 		return fmt.Errorf("failed to insert courses: %v", err)
 	}
 
+	// insert all of the instructor names
 	if err := db.insertInstructor(instructorsNames); err != nil {
 		return fmt.Errorf("failed to insert instructors: %v", err)
 	}

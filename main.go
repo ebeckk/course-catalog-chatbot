@@ -38,6 +38,7 @@ func main() {
 		if err != nil {
 			return
 		}
+
 		var allQuery string
 		for _, row := range result[0] {
 			allQuery = allQuery + row
@@ -45,7 +46,7 @@ func main() {
 
 		bot := &chatBot{
 			question: question,
-			data:     "use the following data to answer the question and format it, this is the data:" + allQuery,
+			data:     "use the following data to answer the question" + allQuery,
 		}
 
 		answer, err := bot.callAPI(client)
