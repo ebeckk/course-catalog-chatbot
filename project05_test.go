@@ -181,7 +181,7 @@ Yes, you can learn guitar this semester. Here are the available courses for guit
 	}
 
 	for _, test := range tests {
-		t.Run(test.question, func(t *testing.T) {
+		t.Run(test.name, func(t *testing.T) {
 
 			file, err := os.Open("fallclasses.csv")
 			if err != nil {
@@ -216,8 +216,6 @@ Yes, you can learn guitar this semester. Here are the available courses for guit
 			if err != nil {
 				fmt.Printf("api call didn't work: %v", err)
 			}
-
-			fmt.Printf("answer from question: %s\n", answer)
 
 			bot = &chatBot{
 				data:     "Compare these two course listings and return ONLY 'yes' if the information is atleast 50 percent similar. The only thing that matters are the courses, instructors and meeting times.(ignoring formatting), or 'no' if they differ:\n\nFirst listing:\n" + answer + "\n\nSecond listing:\n" + test.expected,
