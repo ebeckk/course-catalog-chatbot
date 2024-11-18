@@ -46,7 +46,7 @@ func main() {
 
 		bot := &chatBot{
 			question: question,
-			data:     "use the following data to answer the question" + allQuery,
+			data:     "use the following data to answer the question and omit the last column from the final result, for example it shouldn't be SCCS272, it should be CS272, apply that rule to all courses" + allQuery,
 		}
 
 		answer, err := bot.callAPI(client)
