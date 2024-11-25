@@ -18,12 +18,15 @@ type chatBot struct {
 * Returns a string which could be instructorName, "none", or the results of the user question
  */
 func (bot *chatBot) callAPI(client *gopenai.Client) (string, error) {
+
+	instructions := "omit the last column from the final result, for example it shouldn't be SCCS272, it should be CS272"
+
 	req := gopenai.ChatCompletionRequest{
 		Model: gopenai.GPT4oMini,
 		Messages: []gopenai.ChatCompletionMessage{
 			{
 				Role:    gopenai.ChatMessageRoleSystem,
-				Content: bot.data,
+				Content: instructions + bot.data,
 			},
 			{
 				Role:    gopenai.ChatMessageRoleUser,
