@@ -22,6 +22,11 @@ type Database struct {
 	openaiClient         *gopenai.Client
 }
 
+/*
+* This function creates the ChromaDB. It generates the embedding function.
+* It also resets the collections if reset == true.
+ */
+
 func NewChromaDB(reset bool) (*Database, error) {
 	if err := godotenv.Load("api.env"); err != nil {
 		return nil, fmt.Errorf("error loading .env file: %v", err)
@@ -90,104 +95,67 @@ func NewChromaDB(reset bool) (*Database, error) {
 
 }
 
+/*
+* Function which inserts all of the records from the csv into the database.
+* Reads CSV data uses it to call insertCourses() and insertInstructors() to insert both respectivley.
+ */
+
 func (db *Database) insertRecords(r io.Reader, reset bool) error {
 	if !reset {
 		return nil
 	}
 
-	ctx := context.Background()
+	// read the csv file
 	records, err := ReadCSV(r)
 	if err != nil {
 		return err
 	}
 
-	if len(records) <= 1 {
+	if len(records) < 1 {
 		return fmt.Errorf("no records to insert")
 	}
 
 	fmt.Printf("Processing %d records from CSV\n", len(records)-1)
 
+	// make a map to check for duplicates
 	instructors := make(map[string]bool)
+	// make a slice to append names to
+	instructorsNames := []string{}
+	// holds course info (csv row) and instructorName
 	var courseDocuments []courseRecord
 
 	for _, row := range records[1:] {
-		if len(row) >= 19 {
-			firstName := row[17]
-			lastName := row[18]
-			fullName := strings.TrimSpace(firstName + " " + lastName)
-			if fullName != " " {
-				instructors[fullName] = true
-			}
 
-			courseDocuments = append(courseDocuments, courseRecord{
-				document:   strings.Join(row, " "),
-				instructor: fullName,
-			})
+		// get the fullName of the instructor
+		firstName := row[17]
+		lastName := row[18]
+		fullName := firstName + " " + lastName
+
+		// check for duplicates, then append
+		if !instructors[fullName] {
+			instructors[fullName] = true
+			instructorsNames = append(instructorsNames, fullName)
 		}
+
+		// append into courseDocuments slice
+		courseDocuments = append(courseDocuments, courseRecord{
+			document:   strings.Join(row, " "),
+			instructor: fullName,
+		})
+
 	}
 
 	fmt.Printf("Found %d unique instructors and %d courses\n", len(instructors), len(courseDocuments))
 
-	if err := db.insertCourses(ctx, courseDocuments); err != nil {
+	// insert course-info + metadata with instructors
+	if err := db.insertCourses(courseDocuments); err != nil {
 		return fmt.Errorf("failed to insert courses: %v", err)
 	}
 
-	if err := db.insertInstructorBatch(ctx, instructors); err != nil {
+	// insert all of the instructor names
+	if err := db.insertInstructor(instructorsNames); err != nil {
 		return fmt.Errorf("failed to insert instructors: %v", err)
 	}
 
 	return nil
-}
-
-func (db *Database) Query(question string) (string, error) {
-	ctx := context.Background()
-
-	// Extract potential instructor name from the question
-	instructorName, err := db.getInstructorFromQuestion(question)
-	if err != nil {
-		return "", fmt.Errorf("failed to extract instructor from question: %v", err)
-	}
-
-	// If an instructor was mentioned, use it in metadata filter
-	var metadata map[string]interface{}
-	if instructorName != "" && instructorName != "NONE" {
-		// Query instructor collection to find the closest match
-		results, err := db.instructorCollection.Query(
-			ctx,
-			[]string{instructorName},
-			5,
-			nil,
-			nil,
-			nil,
-		)
-
-		if err != nil {
-			return "", fmt.Errorf("error querying instructors: %v", err)
-		}
-
-		if results != nil && len(results.Documents) > 0 && len(results.Documents[0]) > 0 {
-			metadata = map[string]interface{}{
-				"instructor": results.Documents[0][0],
-			}
-		}
-	}
-
-	// Query courses with instructor metadata
-	results, err := db.courseCollection.Query(
-		ctx,
-		[]string{question},
-		5,
-		metadata,
-		nil,
-		nil,
-	)
-	if err != nil {
-		return "", fmt.Errorf("error querying courses: %v", err)
-	}
-
-	if results == nil || len(results.Documents) == 0 {
-		return "", fmt.Errorf("no results found")
-	}
-
-	return strings.Join(results.Documents[0], "\n"), nil
 }
